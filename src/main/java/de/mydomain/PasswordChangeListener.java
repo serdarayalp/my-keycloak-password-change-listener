@@ -1,5 +1,6 @@
 package de.mydomain;
 
+import de.mydomain.utilities.KeycloakUtilities;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
@@ -9,24 +10,27 @@ import org.keycloak.email.EmailTemplateProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.theme.Theme;
 
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class PasswordChangeListener implements EventListenerProvider {
 
-    private final KeycloakSession session;
+    private final KeycloakSession keycloakSession;
 
-    public PasswordChangeListener(KeycloakSession session) {
-        this.session = session;
+    public PasswordChangeListener(KeycloakSession keycloakSession) {
+        this.keycloakSession = keycloakSession;
     }
 
     @Override
     public void onEvent(Event event) {
         // Prüfen, ob ein Passwort-Update-Event vorliegt
         if (event.getType() == EventType.UPDATE_PASSWORD) {
-            RealmModel realm = session.realms().getRealm(event.getRealmId());
-            UserModel user = session.users().getUserById(realm, event.getUserId());
+            RealmModel realm = keycloakSession.realms().getRealm(event.getRealmId());
+            UserModel user = keycloakSession.users().getUserById(realm, event.getUserId());
 
             if (user != null && user.getEmail() != null) {
                 sendPasswordChangeNotification(realm, user);
@@ -36,7 +40,7 @@ public class PasswordChangeListener implements EventListenerProvider {
 
     private void sendPasswordChangeNotification(RealmModel realm, UserModel user) {
         try {
-            EmailTemplateProvider emailProvider = session.getProvider(EmailTemplateProvider.class);
+            EmailTemplateProvider emailProvider = keycloakSession.getProvider(EmailTemplateProvider.class);
             emailProvider.setRealm(realm);
             emailProvider.setUser(user);
 
@@ -45,11 +49,16 @@ public class PasswordChangeListener implements EventListenerProvider {
 
             attributes.put("email", user.getEmail());
 
+            Theme theme = KeycloakUtilities.getTheme(realm, keycloakSession);
+            Locale locale = KeycloakUtilities.getLocale(keycloakSession, user);
+
+            KeycloakUtilities.addLinkExpirationFormatter(attributes, theme, locale);
+
             // Versendet die Mail unter Nutzung der konfigurierten SMTP-Einstellungen
             // (Subject-Key, Template-Name für HTML/Text, Attribute)
             emailProvider.send("passwordUpdatedSubject", "password-updated.ftl", attributes);
 
-        } catch (EmailException e) {
+        } catch (EmailException | IOException e) {
             e.printStackTrace();
         }
     }
