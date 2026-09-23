@@ -47,5 +47,20 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <finalName>my-keycloak-password-change-listener</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <!-- Pfad relativ zum SPI-Projekt zum spis-Ordner des Docker-Projekts -->
+                    <outputDirectory>../my-keycloak-docker/spis</outputDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 
 </project>
